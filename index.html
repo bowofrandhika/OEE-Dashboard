@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DRYLINE / OEE — Dashboard OEE Produksi Karet Kering</title>
+  <meta name="description" content="Dashboard operasional OEE untuk memantau kinerja produksi basah dan produksi kering pada fasilitas karet kering.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<script>document.documentElement.classList.add('js');</script>
+<a class="skip-link" href="#main">Lompat ke konten utama</a>
+
+<!-- ============ CONTROL HEADER ============ -->
+<header class="ctl-header" id="ctl-header">
+  <div class="ctl-header__inner">
+    <div class="wordmark">
+      <span class="wordmark__mark">DRYLINE</span>
+      <span class="wordmark__slash">/</span>
+      <span class="wordmark__sub">OEE</span>
+    </div>
+
+    <div class="ctl-header__plant">
+      <label class="micro-label" for="plant-select">Plant</label>
+      <select id="plant-select" class="plant-select" aria-label="Pilih lokasi pabrik">
+        <option value="bandung-01" selected>PLANT / BANDUNG 01</option>
+        <option value="palembang-02">PLANT / PALEMBANG 02</option>
+        <option value="pontianak-03">PLANT / PONTIANAK 03</option>
+      </select>
+    </div>
+
+    <div class="ctl-header__clock">
+      <span class="ctl-header__date" id="header-date">—</span>
+      <span class="ctl-header__time"><span class="value" id="header-clock">00:00:00</span><span class="unit"> WIB</span></span>
+    </div>
+
+    <div class="ctl-header__status">
+      <span class="live-badge" id="live-badge"><span class="live-badge__dot" aria-hidden="true"></span>SISTEM AKTIF</span>
+      <span class="ctl-header__updated micro-label" id="last-updated">Diperbarui 0 dtk lalu</span>
+    </div>
+
+    <button class="btn-pill btn-pill--ghost" id="btn-export-top" type="button">Unduh Laporan</button>
+    <button class="icon-btn" id="btn-menu-mobile" type="button" aria-label="Buka menu aksi">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============ OPENING BAND ============ -->
+  <section class="hero panel-boot" id="hero" aria-labelledby="hero-title">
+    <div class="hero__grid">
+      <div class="hero__id">
+        <p class="hero__eyebrow">Status Sistem OEE</p>
+        <h1 class="hero__title" id="hero-title">Produksi<br>Karet Kering</h1>
+        <p class="hero__desc">Dashboard operasional untuk memantau kinerja produksi basah dan produksi kering.</p>
+      </div>
+
+      <div class="hero__trace" aria-hidden="true">
+        <svg class="trace-svg" viewBox="0 0 8 320" preserveAspectRatio="none">
+          <line class="trace-svg__line" x1="4" y1="0" x2="4" y2="320"/>
+        </svg>
+        <span class="trace-node trace-node--top"></span>
+        <span class="trace-node trace-node--bottom"></span>
+      </div>
+
+      <div class="hero__result">
+        <div class="hero__status-row">
+          <div>
+            <p class="micro-label">Status Produksi</p>
+            <p class="value hero__shift" id="hero-shift">Shift 2</p>
+          </div>
+          <div class="hero__timer-block">
+            <p class="micro-label" id="hero-timer-label">Berakhir</p>
+            <p class="value hero__timer" id="hero-timer">02:18:42</p>
+          </div>
+        </div>
+
+        <p class="metric-label">OEE Saat Ini</p>
+        <div class="hero__metric-row">
+          <p class="metric" id="hero-oee">86.4%</p>
+          <div class="hero__delta">
+            <span class="delta-pill delta-pill--up" id="hero-delta">+1.4 poin vs target</span>
+            <span class="hero__target micro-label">Target <span class="value" id="hero-target">85.0%</span></span>
+          </div>
+        </div>
+
+        <div class="hero__submetrics" id="hero-submetrics">
+          <div class="submetric">
+            <p class="micro-label">Ketersediaan</p>
+            <p class="value submetric__value" id="sub-availability">91.8%</p>
+            <div class="meter"><span class="meter__fill meter__fill--ink" id="sub-availability-bar" style="width:91.8%"></span></div>
+          </div>
+          <div class="submetric">
+            <p class="micro-label">Kinerja</p>
+            <p class="value submetric__value" id="sub-performance">96.2%</p>
+            <div class="meter"><span class="meter__fill meter__fill--ink" id="sub-performance-bar" style="width:96.2%"></span></div>
+          </div>
+          <div class="submetric">
+            <p class="micro-label">Kualitas</p>
+            <p class="value submetric__value" id="sub-quality">97.9%</p>
+            <div class="meter"><span class="meter__fill meter__fill--ink" id="sub-quality-bar" style="width:97.9%"></span></div>
+          </div>
+        </div>
+
+        <div class="hero__progress">
+          <div class="hero__progress-head">
+            <span class="micro-label">Progres Shift</span>
+            <span class="micro-label"><span class="value" id="shift-progress-label">61%</span> · <span id="shift-range">14:00 — 22:00</span></span>
+          </div>
+          <div class="progress-track">
+            <span class="progress-track__fill" id="shift-progress-fill" style="width:61%"></span>
+            <span class="progress-track__now" id="shift-progress-now" style="left:61%"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PROCESS RAIL ============ -->
+  <section class="process panel-boot" aria-labelledby="process-title">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="process-title">Alur Produksi Basah → Kering</h2>
+        <p class="section-desc">Lima tahap proses dengan status peralatan secara langsung.</p>
+      </div>
+      <div class="section-head__meta">
+        <span class="micro-label">Waktu Siklus</span>
+        <span class="value" id="cycle-time">02:18:42</span>
+      </div>
+    </div>
+
+    <ol class="rail" id="process-rail">
+      <li class="rail__stage" data-stage="1">
+        <div class="rail__connector" aria-hidden="true"><span class="rail__line"></span></div>
+        <div class="rail__body">
+          <div class="rail__icon" aria-hidden="true">
+            <!-- drum / mixing -->
+            <svg viewBox="0 0 40 40"><rect x="8" y="12" width="24" height="20" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M8 18h24M14 12V8h12v4" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="20" cy="25" r="3.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </div>
+          <p class="rail__stage-label">01 / Produksi Basah</p>
+          <p class="rail__eq value">KOA-01</p>
+          <p class="rail__metric value">2.4 <span class="unit">t/jam</span></p>
+          <p class="state state--run"><span class="state__dot" aria-hidden="true"></span>Berjalan</p>
+        </div>
+      </li>
+      <li class="rail__stage" data-stage="2">
+        <div class="rail__connector" aria-hidden="true"><span class="rail__line"></span></div>
+        <div class="rail__body">
+          <div class="rail__icon" aria-hidden="true">
+            <!-- coagulation tank -->
+            <svg viewBox="0 0 40 40"><rect x="10" y="8" width="20" height="26" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10 16c3 2 5-2 8 0s5-2 8 0v12c-3 2-5-2-8 0s-5-2-8 0V16z" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M16 8V5h8v3" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </div>
+          <p class="rail__stage-label">02 / Koagulasi</p>
+          <p class="rail__eq value">CLN-03</p>
+          <p class="rail__metric value">96 <span class="unit">%</span></p>
+          <p class="state state--run"><span class="state__dot" aria-hidden="true"></span>Berjalan</p>
+        </div>
+      </li>
+      <li class="rail__stage" data-stage="3">
+        <div class="rail__connector" aria-hidden="true"><span class="rail__line"></span></div>
+        <div class="rail__body">
+          <div class="rail__icon" aria-hidden="true">
+            <!-- dryer with heat lines -->
+            <svg viewBox="0 0 40 40"><rect x="6" y="12" width="28" height="18" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 30v4M28 30v4M13 17c2-2 2-3 0-5M20 17c2-2 2-3 0-5M27 17c2-2 2-3 0-5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M6 21h28" stroke="currentColor" stroke-width="1.5"/></svg>
+          </div>
+          <p class="rail__stage-label">03 / Pengeringan</p>
+          <p class="rail__eq value">DRY-01</p>
+          <p class="rail__metric value">68 <span class="unit">°C</span></p>
+          <p class="state state--run"><span class="state__dot" aria-hidden="true"></span>Berjalan</p>
+        </div>
+      </li>
+      <li class="rail__stage" data-stage="4">
+        <div class="rail__connector" aria-hidden="true"><span class="rail__line"></span></div>
+        <div class="rail__body">
+          <div class="rail__icon" aria-hidden="true">
+            <!-- scale -->
+            <svg viewBox="0 0 40 40"><path d="M20 6v28M12 34h16M8 16h24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8 16l-4 8h8l-4-8zM32 16l-4 8h8l-4-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/><circle cx="20" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </div>
+          <p class="rail__stage-label">04 / Penimbangan</p>
+          <p class="rail__eq value">BAL-01</p>
+          <p class="rail__metric value">8.4 <span class="unit">s/tas</span></p>
+          <p class="state state--warn"><span class="state__dot" aria-hidden="true"></span>Perhatian</p>
+        </div>
+      </li>
+      <li class="rail__stage" data-stage="5">
+        <div class="rail__connector" aria-hidden="true"><span class="rail__line"></span></div>
+        <div class="rail__body">
+          <div class="rail__icon" aria-hidden="true">
+            <!-- warehouse racks -->
+            <svg viewBox="0 0 40 40"><path d="M6 34V16L20 8l14 8v18" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/><rect x="10" y="20" width="6" height="6" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="17" y="20" width="6" height="6" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="24" y="20" width="6" height="6" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="10" y="27" width="6" height="6" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="17" y="27" width="6" height="6" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+          </div>
+          <p class="rail__stage-label">05 / Gudang Kering</p>
+          <p class="rail__eq value">WH-01</p>
+          <p class="rail__metric value">24 <span class="unit">t</span></p>
+          <p class="state state--run"><span class="state__dot" aria-hidden="true"></span>Berjalan</p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- ============ ANALYSIS BOARD ============ -->
+  <section class="analysis panel-boot" aria-labelledby="analysis-title">
+    <div class="analysis__chart panel">
+      <div class="panel__head">
+        <h2 class="panel__title" id="analysis-title">Tren OEE</h2>
+        <div class="range-switch" role="tablist" aria-label="Rentang waktu tren">
+          <button class="range-switch__btn is-active" role="tab" aria-selected="true" data-range="8h">8 Jam</button>
+          <button class="range-switch__btn" role="tab" aria-selected="false" data-range="24h">24 Jam</button>
+          <button class="range-switch__btn" role="tab" aria-selected="false" data-range="7d">7 Hari</button>
+        </div>
+      </div>
+      <div class="chart-legend" aria-hidden="true">
+        <span class="legend-item"><span class="legend-swatch legend-swatch--actual"></span>Aktual</span>
+        <span class="legend-item"><span class="legend-swatch legend-swatch--target"></span>Target</span>
+        <span class="legend-item"><span class="legend-swatch legend-swatch--plan"></span>Rencana</span>
+      </div>
+      <div class="chart-stage" id="trend-stage">
+        <svg class="trend-svg" id="trend-svg" role="img" aria-labelledby="trend-summary"></svg>
+      </div>
+      <p class="sr-only" id="trend-summary">Grafik tren OEE 8 jam terakhir. Nilai aktual bergerak antara 82.1% hingga 87.2% dengan target 85.0%. Titik terbaru 86.4%.</p>
+      <div class="chart-foot">
+        <span class="micro-label">Satuan: persen (%) · Zona waktu WIB</span>
+        <span class="micro-label" id="trend-extremes">Tertinggi 87.2% · Terendah 82.1%</span>
+      </div>
+    </div>
+
+    <div class="analysis__loss panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Sumber Kehilangan</h2>
+        <div class="range-switch range-switch--sm" role="tablist" aria-label="Periode kehilangan">
+          <button class="range-switch__btn is-active" role="tab" aria-selected="true" data-loss-period="current">Shift Ini</button>
+          <button class="range-switch__btn" role="tab" aria-selected="false" data-loss-period="prev">Shift Lalu</button>
+        </div>
+      </div>
+      <ol class="loss-list" id="loss-list"></ol>
+      <p class="sr-only" id="loss-summary"></p>
+      <div class="chart-foot">
+        <span class="micro-label">Total kehilangan <span class="value" id="loss-total">136 menit</span></span>
+        <span class="micro-label">Tipe kehilangan: kecepatan · waktu henti · kualitas</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DIVISION MATRIX ============ -->
+  <section class="matrix panel-boot" aria-labelledby="matrix-title">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="matrix-title">Matriks Divisi</h2>
+        <p class="section-desc">Bandingkan kinerja produksi basah dan produksi kering dalam satu tampilan.</p>
+      </div>
+      <div class="range-switch range-switch--sm" role="tablist" aria-label="Pilih divisi">
+        <button class="range-switch__btn is-active" role="tab" aria-selected="true" data-division="all">Kedua Divisi</button>
+        <button class="range-switch__btn" role="tab" aria-selected="false" data-division="wet">Produksi Basah</button>
+        <button class="range-switch__btn" role="tab" aria-selected="false" data-division="dry">Produksi Kering</button>
+      </div>
+    </div>
+
+    <div class="matrix__grid">
+      <div class="matrix__overview panel" id="matrix-overview"></div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h3 class="panel__title panel__title--sm">OEE per Unit Kerja</h3>
+          <span class="micro-label" id="matrix-unit-scope">Kedua divisi</span>
+        </div>
+        <ul class="bar-list" id="matrix-units"></ul>
+        <p class="sr-only" id="matrix-units-summary"></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel__head">
+          <h3 class="panel__title panel__title--sm">Waktu Henti per Penyebab</h3>
+          <span class="micro-label">Menit · shift berjalan</span>
+        </div>
+        <ul class="bar-list" id="matrix-downtime"></ul>
+        <p class="sr-only" id="matrix-downtime-summary"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EVENT LEDGER ============ -->
+  <section class="ledger panel-boot" aria-labelledby="ledger-title">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="ledger-title">Buku Catatan Peristiwa</h2>
+        <p class="section-desc">Peristiwa terbaru dari sistem produksi, diurutkan dari waktu terakhir.</p>
+      </div>
+      <div class="ledger__actions">
+        <div class="range-switch range-switch--sm" role="tablist" aria-label="Filter divisi peristiwa">
+          <button class="range-switch__btn is-active" role="tab" aria-selected="true" data-event-filter="all">Semua</button>
+          <button class="range-switch__btn" role="tab" aria-selected="false" data-event-filter="wet">Basah</button>
+          <button class="range-switch__btn" role="tab" aria-selected="false" data-event-filter="dry">Kering</button>
+        </div>
+        <button class="btn-pill btn-pill--ghost btn-pill--sm" id="btn-export-ledger" type="button">Unduh CSV</button>
+      </div>
+    </div>
+
+    <div class="ledger__table-wrap">
+      <table class="ledger__table" id="ledger-table">
+        <thead>
+          <tr>
+            <th scope="col">Waktu</th>
+            <th scope="col">Divisi</th>
+            <th scope="col">Peralatan</th>
+            <th scope="col">Kode</th>
+            <th scope="col">Durasi</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody id="ledger-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ ACTION PANEL ============ -->
+  <section class="action panel-boot" aria-labelledby="action-title">
+    <div class="action__inner">
+      <div class="action__copy">
+        <h2 class="action__title" id="action-title">Tindakan</h2>
+        <p class="action__desc">Buat laporan shift, kelola target operasional, atau sesuaikan pengaturan sistem.</p>
+      </div>
+      <div class="action__buttons">
+        <button class="btn-pill btn-pill--live" id="btn-report" type="button">Buat Laporan Shift</button>
+        <button class="btn-pill btn-pill--dark-ghost" id="btn-target" type="button">Kelola Target</button>
+        <button class="btn-pill btn-pill--dark-ghost" id="btn-settings" type="button">Buka Pengaturan</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__left">
+      <div class="wordmark wordmark--sm">
+        <span class="wordmark__mark">DRYLINE</span>
+        <span class="wordmark__slash">/</span>
+        <span class="wordmark__sub">OEE</span>
+      </div>
+      <p class="site-footer__tag">Sistem pemantauan produksi karet kering</p>
+    </div>
+    <div class="site-footer__mid">
+      <div class="footer-stat"><span class="micro-label">Versi</span><span class="value">1.0.0</span></div>
+      <div class="footer-stat"><span class="micro-label">Kesehatan Sistem</span><span class="value" id="footer-health">Normal</span></div>
+      <div class="footer-stat"><span class="micro-label">Zona Waktu</span><span class="value">Asia/Jakarta</span></div>
+    </div>
+    <div class="site-footer__right">
+      <button class="btn-text" id="btn-export-foot" type="button">Ekspor Data</button>
+      <button class="btn-text" id="btn-settings-foot" type="button">Pengaturan</button>
+    </div>
+  </div>
+</footer>
+
+<!-- ============ MODAL: TARGET ============ -->
+<div class="modal" id="modal-target" hidden>
+  <div class="modal__backdrop" data-close-modal></div>
+  <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modal-target-title">
+    <div class="modal__head">
+      <h2 class="modal__title" id="modal-target-title">Kelola Target</h2>
+      <button class="icon-btn" type="button" data-close-modal aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <p class="modal__desc">Tentukan target OEE untuk setiap divisi. Nilai akan dipakai pada perbandingan real-time.</p>
+    <form class="modal__form" id="form-target">
+      <div class="field">
+        <label class="micro-label" for="target-all">Target OEE Kedua Divisi (%)</label>
+        <input class="input value" id="target-all" type="number" step="0.1" min="50" max="100" value="85.0">
+      </div>
+      <div class="field">
+        <label class="micro-label" for="target-wet">Target OEE Produksi Basah (%)</label>
+        <input class="input value" id="target-wet" type="number" step="0.1" min="50" max="100" value="85.0">
+      </div>
+      <div class="field">
+        <label class="micro-label" for="target-dry">Target OEE Produksi Kering (%)</label>
+        <input class="input value" id="target-dry" type="number" step="0.1" min="50" max="100" value="85.0">
+      </div>
+      <div class="modal__actions">
+        <button class="btn-pill btn-pill--ghost" type="button" data-close-modal>Batal</button>
+        <button class="btn-pill btn-pill--live" type="submit">Simpan Target</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MODAL: SETTINGS ============ -->
+<div class="modal" id="modal-settings" hidden>
+  <div class="modal__backdrop" data-close-modal></div>
+  <div class="modal__card" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title">
+    <div class="modal__head">
+      <h2 class="modal__title" id="modal-settings-title">Pengaturan</h2>
+      <button class="icon-btn" type="button" data-close-modal aria-label="Tutup">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <p class="modal__desc">Sesuaikan pembaruan data dan kepadatan tampilan.</p>
+    <form class="modal__form" id="form-settings">
+      <div class="field">
+        <label class="micro-label" for="set-refresh">Interval Pembaruan Data</label>
+        <select class="input value" id="set-refresh">
+          <option value="5000">5 detik</option>
+          <option value="15000" selected>15 detik</option>
+          <option value="30000">30 detik</option>
+          <option value="60000">60 detik</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="micro-label" for="set-density">Kepadatan Tabel</label>
+        <select class="input value" id="set-density">
+          <option value="compact">Ringkas</option>
+          <option value="normal" selected>Normal</option>
+        </select>
+      </div>
+      <div class="field field--row">
+        <label class="switch-label micro-label" for="set-simulasi">
+          <input type="checkbox" id="set-simulasi" checked>
+          <span class="switch" aria-hidden="true"></span>
+          Simulasi data langsung
+        </label>
+      </div>
+      <div class="modal__actions">
+        <button class="btn-pill btn-pill--ghost" type="button" data-close-modal>Batal</button>
+        <button class="btn-pill btn-pill--live" type="submit">Simpan Pengaturan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
