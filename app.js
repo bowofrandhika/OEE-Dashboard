@@ -154,6 +154,96 @@
     : false;
 
   /* ---------------------------------------------------------
+     3. DATA LOKAL (OFFLINE-FIRST)
+     --------------------------------------------------------- */
+
+  const STORAGE_KEYS = {
+    events: "dryline.v1.manualEvents",
+    tallies: "dryline.v1.tallies",
+    equipment: "dryline.v1.equipment",
+    targets: "dryline.v1.targets",
+    seq: "dryline.v1.seq"
+  };
+
+  function loadJSON(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function saveJSON(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* storage penuh/di-block */ }
+  }
+
+  const OUTPUT_BASE = { all: 24.6, wet: 12.1, dry: 12.5 };
+
+  const EQUIPMENT_DEFAULT = [
+    { code: "KOA-01", name: "Bak Koagulasi", division: "wet", stage: "Koagulasi", source: "manual" },
+    { code: "CLN-03", name: "Unit Pencucian", division: "wet", stage: "Pencucian", source: "manual" },
+    { code: "MIX-04", name: "Pemeras / Mixer", division: "wet", stage: "Pemerasan", source: "manual" },
+    { code: "DRY-01", name: "Pengering", division: "dry", stage: "Pengeringan", source: "manual" },
+    { code: "MILL-02", name: "Penggiling", division: "dry", stage: "Penggilingan", source: "manual" },
+    { code: "BAL-01", name: "Penimbang / Baling", division: "dry", stage: "Penimbangan", source: "manual" },
+    { code: "WH-01", name: "Gudang Kering", division: "dry", stage: "Gudang", source: "manual" }
+  ];
+
+  const REASONS = [
+    "Mesin berhenti tak terjadwal",
+    "Ganti format / pembersihan",
+    "Kecepatan mesin turun",
+    "Menunggu bahan baku",
+    "Produk tidak sesuai spesifikasi",
+    "Kegagalan startup"
+  ];
+
+  const SOURCE_LABELS = { manual: "Manual", semi: "Semi-otomatis", live: "Realtime" };
+
+  let equipment = loadJSON(STORAGE_KEYS.equipment, null) || EQUIPMENT_DEFAULT.slice();
+  let manualEvents = loadJSON(STORAGE_KEYS.events, []);
+  let manualTallies = loadJSON(STORAGE_KEYS.tallies, []);
+  let seqCounter = loadJSON(STORAGE_KEYS.seq, 1);
+
+  const storedTargets = loadJSON(STORAGE_KEYS.targets, null);
+  if (storedTargets) {
+    TARGETS.all = typeof storedTargets.all === "number" ? storedTargets.all : TARGETS.all;
+    TARGETS.wet = typeof storedTargets.wet === "number" ? storedTargets.wet : TARGETS.wet;
+    TARGETS.dry = typeof storedTargets.dry === "number" ? storedTargets.dry : TARGETS.dry;
+  }
+
+  function nextManualCode() {
+    const code = "M-" + String(seqCounter).padStart(3, "0");
+    seqCounter += 1;
+    saveJSON(STORAGE_KEYS.seq, seqCounter);
+    return code;
+  }
+
+  function divisionLabel(key) {
+    return key === "wet" ? "Basah" : key === "dry" ? "Kering" : "Kedua";
+  }
+
+  function getOutput(key) {
+    const goodSum = manualTallies
+      .filter(function (t) { return t.division === key; })
+      .reduce(function (a, t) { return a + (t.good || 0); }, 0);
+    return OUTPUT_BASE[key] + goodSum / 1000;
+  }
+
+  function manualLossByReason() {
+    const map = {};
+    manualEvents.forEach(function (e) {
+      if (e.reason) map[e.reason] = (map[e.reason] || 0) + (e.minutes || 0);
+    });
+    return map;
+  }
+
+  function sourceLabel() {
+    const hasManual = manualEvents.length > 0 || manualTallies.length > 0;
+    if (state.simulate && hasManual) return "simulasi + manual";
+    if (state.simulate) return "simulasi";
+    return hasManual ? "input manual" : "belum ada data";
+  }
+
+  /* ---------------------------------------------------------
      3. HELPERS
      --------------------------------------------------------- */
 
@@ -437,7 +527,18 @@
   function renderLoss() {
     const list = $("#loss-list");
     if (!list) return;
-    const rows = lossPeriods[state.lossPeriod];
+    let rows = lossPeriods[state.lossPeriod].map(function (r) {
+      return { name: r.name, value: r.value };
+    });
+    if (state.lossPeriod === "current") {
+      const manual = manualLossByReason();
+      Object.keys(manual).forEach(function (name) {
+        const found = rows.filter(function (r) { return r.name === name; })[0];
+        if (found) found.value += manual[name];
+        else rows.push({ name: name, value: manual[name] });
+      });
+    }
+    rows.sort(function (a, b) { return b.value - a.value; });
     const max = Math.max.apply(null, rows.map(function (r) { return r.value; }));
     const total = rows.reduce(function (a, r) { return a + r.value; }, 0);
 
@@ -497,7 +598,7 @@
         '<div class="ov-cell"><div class="ov-cell__label"><span class="micro-label">Ketersediaan</span><span class="unit">target ≥ 90%</span></div><p class="ov-cell__value">' + fmtPct(d.availability) + "</p></div>" +
         '<div class="ov-cell"><div class="ov-cell__label"><span class="micro-label">Kinerja</span><span class="unit">target ≥ 95%</span></div><p class="ov-cell__value">' + fmtPct(d.performance) + "</p></div>" +
         '<div class="ov-cell"><div class="ov-cell__label"><span class="micro-label">Kualitas</span><span class="unit">target ≥ 98%</span></div><p class="ov-cell__value">' + fmtPct(d.quality) + "</p></div>" +
-        '<div class="ov-cell"><div class="ov-cell__label"><span class="micro-label">Output</span><span class="unit">target ' + d.targetOutput.toFixed(1) + ' t</span></div><p class="ov-cell__value">' + d.output.toFixed(1) + '<span class="unit"> t</span></p></div>' +
+        '<div class="ov-cell"><div class="ov-cell__label"><span class="micro-label">Output</span><span class="unit">target ' + d.targetOutput.toFixed(1) + ' t</span></div><p class="ov-cell__value">' + getOutput(state.division).toFixed(1) + '<span class="unit"> t</span></p></div>' +
         '<div class="ov-cell"><div class="ov-cell__label"><span class="micro-label">Target OEE</span><span class="unit">operasional</span></div><p class="ov-cell__value">' + fmtPct(target) + "</p></div>";
     }
 
@@ -550,19 +651,24 @@
      8. EVENT LEDGER
      --------------------------------------------------------- */
 
+  function allEvents() {
+    return manualEvents.concat(events);
+  }
+
   function renderLedger() {
     const body = $("#ledger-body");
     if (!body) return;
-    const rows = events.filter(function (e) {
+    const rows = allEvents().filter(function (e) {
       return state.eventFilter === "all" || e.division === state.eventFilter || e.division === "all";
     });
 
     body.innerHTML = rows.map(function (e, i) {
-      const isNew = i === 0 && e.status === "aktif";
+      const isNew = i === 0 && (e.status === "aktif" || e.source === "manual");
       const statusMap = {
         aktif: ['status-chip--active', 'Aktif'],
         selesai: ['status-chip--done', 'Selesai'],
-        tahan: ['status-chip--hold', 'Tahan']
+        tahan: ['status-chip--hold', 'Tahan'],
+        catat: ['status-chip--done', 'Tercatat']
       };
       const st = statusMap[e.status] || statusMap.selesai;
       return (
@@ -576,6 +682,315 @@
         "</tr>"
       );
     }).join("");
+  }
+
+  /* ---------------------------------------------------------
+     8b. INPUT SHIFT + KAMUS ALAT
+     --------------------------------------------------------- */
+
+  let selectedReason = null;
+
+  function timeAgo(ms) {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    if (s < 60) return s + " dtk lalu";
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + " mnt lalu";
+    return Math.floor(m / 60) + " jam lalu";
+  }
+
+  const SOURCE_DISPLAY = {
+    "simulasi": "Simulasi",
+    "input manual": "Input Manual",
+    "simulasi + manual": "Simulasi + Manual",
+    "belum ada data": "Belum Ada Data"
+  };
+
+  function renderReasonChips() {
+    const box = $("#dt-reasons");
+    if (!box) return;
+    box.innerHTML = REASONS.map(function (r) {
+      return '<button type="button" class="chip' + (selectedReason === r ? " is-active" : "") +
+        '" data-reason="' + r + '" role="radio" aria-checked="' + (selectedReason === r ? "true" : "false") + '">' + r + "</button>";
+    }).join("");
+    $$(".chip", box).forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        selectedReason = chip.getAttribute("data-reason");
+        renderReasonChips();
+        const hint = $("#dt-hint");
+        if (hint) hint.textContent = "Sebab dipilih: " + selectedReason;
+      });
+    });
+  }
+
+  function populateEquipmentSelect() {
+    const sel = $("#dt-equipment");
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = equipment.map(function (e) {
+      return '<option value="' + e.code + '">' + e.code + " — " + e.name + "</option>";
+    }).join("");
+    if (current && equipment.some(function (e) { return e.code === current; })) sel.value = current;
+  }
+
+  function renderEquipTable() {
+    const body = $("#equip-body");
+    if (!body) return;
+    body.innerHTML = equipment.map(function (e, i) {
+      return (
+        '<tr data-equip-index="' + i + '">' +
+        '<td>' + e.code + "</td>" +
+        "<td>" + e.name + "</td>" +
+        '<td class="col-div">' + divisionLabel(e.division) + "</td>" +
+        "<td>" + e.stage + "</td>" +
+        '<td><select class="source-select js-equip-source" aria-label="Sumber data ' + e.code + '">' +
+        Object.keys(SOURCE_LABELS).map(function (k) {
+          return '<option value="' + k + '"' + (e.source === k ? " selected" : "") + ">" + SOURCE_LABELS[k] + "</option>";
+        }).join("") +
+        "</select></td>" +
+        '<td><button type="button" class="entry-item__del js-equip-del" aria-label="Hapus ' + e.code + '">' +
+        '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
+        "</button></td>" +
+        "</tr>"
+      );
+    }).join("");
+
+    const count = $("#equip-count");
+    if (count) count.textContent = equipment.length;
+
+    $$(".js-equip-source", body).forEach(function (sel) {
+      sel.addEventListener("change", function () {
+        const idx = parseInt(sel.closest("tr").getAttribute("data-equip-index"), 10);
+        if (equipment[idx]) {
+          equipment[idx].source = sel.value;
+          saveJSON(STORAGE_KEYS.equipment, equipment);
+          showToast("Sumber data " + equipment[idx].code + " diperbarui");
+        }
+      });
+    });
+    $$(".js-equip-del", body).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const idx = parseInt(btn.closest("tr").getAttribute("data-equip-index"), 10);
+        const removed = equipment.splice(idx, 1)[0];
+        saveJSON(STORAGE_KEYS.equipment, equipment);
+        renderEquipTable();
+        populateEquipmentSelect();
+        showToast("Alat " + (removed ? removed.code : "") + " dihapus");
+      });
+    });
+  }
+
+  function renderManualLists() {
+    const evList = $("#manual-event-list");
+    if (evList) {
+      if (!manualEvents.length) {
+        evList.innerHTML = '<li class="entry-empty">Belum ada kejadian manual. Catat lewat formulir di atas.</li>';
+      } else {
+        evList.innerHTML = manualEvents.map(function (e, i) {
+          return (
+            '<li class="entry-item">' +
+            '<div class="entry-item__main">' +
+            '<p class="entry-item__title">' + e.time + " · " + e.equipment + " · " + e.duration + "</p>" +
+            '<p class="entry-item__meta">' + e.code + " · " + (e.reason || "-") + (e.note ? " · " + e.note : "") + "</p>" +
+            "</div>" +
+            '<button type="button" class="entry-item__del js-del-event" data-index="' + i + '" aria-label="Hapus kejadian ' + e.code + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
+            "</button>" +
+            "</li>"
+          );
+        }).join("");
+      }
+      const ec = $("#manual-event-count");
+      if (ec) ec.textContent = manualEvents.length + " kejadian";
+      $$(".js-del-event", evList).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const idx = parseInt(btn.getAttribute("data-index"), 10);
+          const removed = manualEvents.splice(idx, 1)[0];
+          saveJSON(STORAGE_KEYS.events, manualEvents);
+          renderManualLists();
+          renderLedger();
+          renderLoss();
+          updateLastUpdated();
+          showToast("Kejadian " + (removed ? removed.code : "") + " dihapus");
+        });
+      });
+    }
+
+    const tList = $("#manual-tally-list");
+    if (tList) {
+      if (!manualTallies.length) {
+        tList.innerHTML = '<li class="entry-empty">Belum ada rekap timbangan. Isi lewat formulir di atas.</li>';
+      } else {
+        tList.innerHTML = manualTallies.map(function (t, i) {
+          return (
+            '<li class="entry-item">' +
+            '<div class="entry-item__main">' +
+            '<p class="entry-item__title">' + t.time + " · Shift " + t.shift + " · " + t.good + " kg</p>" +
+            '<p class="entry-item__meta">' + divisionLabel(t.division) + " · reject " + t.reject + " kg · scrap " + t.scrap + " kg</p>" +
+            "</div>" +
+            '<button type="button" class="entry-item__del js-del-tally" data-index="' + i + '" aria-label="Hapus rekap">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>' +
+            "</button>" +
+            "</li>"
+          );
+        }).join("");
+      }
+      const tc = $("#manual-tally-count");
+      if (tc) tc.textContent = manualTallies.length + " rekap";
+      $$(".js-del-tally", tList).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          const idx = parseInt(btn.getAttribute("data-index"), 10);
+          manualTallies.splice(idx, 1);
+          saveJSON(STORAGE_KEYS.tallies, manualTallies);
+          renderManualLists();
+          renderMatrix();
+          updateLastUpdated();
+          showToast("Rekap dihapus");
+        });
+      });
+    }
+  }
+
+  function markInvalid(el, on) {
+    if (!el) return;
+    el.classList.toggle("is-invalid", !!on);
+  }
+
+  function bindInputForms() {
+    const dtForm = $("#form-downtime");
+    if (dtForm) {
+      const timeInput = $("#dt-time");
+      if (timeInput && !timeInput.value) {
+        const wib = nowWIB();
+        timeInput.value = pad2(wib.getHours()) + ":" + pad2(wib.getMinutes());
+      }
+      dtForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const eqCode = $("#dt-equipment").value;
+        const duration = parseInt($("#dt-duration").value, 10);
+        const note = ($("#dt-note").value || "").trim();
+        const timeVal = $("#dt-time").value || formatClock(nowWIB()).slice(0, 5);
+
+        const okEquip = !!eqCode;
+        const okDur = duration >= 1 && duration <= 600;
+        const okReason = !!selectedReason;
+        markInvalid($("#dt-duration"), !okDur);
+        if (!okEquip || !okDur || !okReason) {
+          const hint = $("#dt-hint");
+          if (hint) {
+            hint.textContent = !okDur ? "Durasi harus 1–600 menit." :
+              !okReason ? "Pilih satu sebab terlebih dahulu." : "Pilih peralatan terlebih dahulu.";
+          }
+          return;
+        }
+
+        const eq = equipment.filter(function (x) { return x.code === eqCode; })[0];
+        const entry = {
+          id: Date.now(),
+          code: nextManualCode(),
+          time: timeVal,
+          division: eq ? eq.division : "all",
+          divisionLabel: eq ? divisionLabel(eq.division) : "Kedua",
+          equipment: eqCode,
+          duration: pad2(duration) + "m 00d",
+          minutes: duration,
+          status: "catat",
+          source: "manual",
+          reason: selectedReason,
+          note: note
+        };
+        manualEvents.unshift(entry);
+        saveJSON(STORAGE_KEYS.events, manualEvents);
+
+        lastUpdateAt = Date.now();
+        renderManualLists();
+        renderLedger();
+        renderLoss();
+        updateLastUpdated();
+
+        $("#dt-duration").value = "";
+        $("#dt-note").value = "";
+        const hint = $("#dt-hint");
+        if (hint) hint.textContent = "Tersimpan " + entry.code + ". Siap input kejadian berikutnya.";
+        showToast("Kejadian " + entry.code + " tersimpan");
+      });
+    }
+
+    const tForm = $("#form-tally");
+    if (tForm) {
+      tForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const good = parseInt($("#tally-good").value, 10);
+        const reject = parseInt($("#tally-reject").value, 10);
+        const scrap = parseInt($("#tally-scrap").value, 10);
+        const ok = good >= 0 && reject >= 0 && scrap >= 0 &&
+          !isNaN(good) && !isNaN(reject) && !isNaN(scrap) &&
+          (good + reject + scrap) > 0;
+        markInvalid($("#tally-good"), !(good >= 0));
+        markInvalid($("#tally-reject"), !(reject >= 0));
+        markInvalid($("#tally-scrap"), !(scrap >= 0));
+        if (!ok) {
+          const hint = $("#tally-hint");
+          if (hint) hint.textContent = "Isi minimal satu angka timbangan yang lebih dari nol.";
+          return;
+        }
+        const division = $("#tally-division").value;
+        const entry = {
+          id: Date.now(),
+          division: division,
+          divisionLabel: divisionLabel(division),
+          shift: $("#tally-shift").value,
+          good: good,
+          reject: reject,
+          scrap: scrap,
+          time: formatClock(nowWIB()).slice(0, 5)
+        };
+        manualTallies.push(entry);
+        saveJSON(STORAGE_KEYS.tallies, manualTallies);
+
+        lastUpdateAt = Date.now();
+        renderManualLists();
+        renderMatrix();
+        updateLastUpdated();
+
+        $("#tally-good").value = "";
+        $("#tally-reject").value = "";
+        $("#tally-scrap").value = "";
+        const hint = $("#tally-hint");
+        if (hint) hint.textContent = "Rekap " + entry.divisionLabel + " tersimpan. Output ikut diperbarui.";
+        showToast("Rekap timbangan tersimpan");
+      });
+    }
+
+    const eqForm = $("#form-equip");
+    if (eqForm) {
+      eqForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        const code = ($("#eq-code").value || "").trim().toUpperCase();
+        const name = ($("#eq-name").value || "").trim();
+        markInvalid($("#eq-code"), !code || equipment.some(function (x) { return x.code === code; }));
+        markInvalid($("#eq-name"), !name);
+        if (!code || !name) {
+          showToast("Lengkapi kode dan nama alat");
+          return;
+        }
+        if (equipment.some(function (x) { return x.code === code; })) {
+          showToast("Kode " + code + " sudah terdaftar");
+          return;
+        }
+        equipment.push({
+          code: code,
+          name: name,
+          division: $("#eq-division").value,
+          stage: $("#eq-stage").value,
+          source: $("#eq-source").value
+        });
+        saveJSON(STORAGE_KEYS.equipment, equipment);
+        renderEquipTable();
+        populateEquipmentSelect();
+        eqForm.reset();
+        showToast("Alat " + code + " ditambahkan");
+      });
+    }
   }
 
   /* ---------------------------------------------------------
@@ -635,8 +1050,7 @@
 
     // "Diperbarui" label
     lastUpdateAt = Date.now();
-    const upd = $("#last-updated");
-    if (upd) upd.textContent = "Diperbarui 0 dtk lalu";
+    updateLastUpdated();
 
     state.tick += 1;
     renderTrend(false);
@@ -646,9 +1060,11 @@
 
   function updateLastUpdated() {
     const upd = $("#last-updated");
-    if (!upd) return;
-    const secs = Math.max(0, Math.floor((Date.now() - lastUpdateAt) / 1000));
-    upd.textContent = "Diperbarui " + secs + " dtk lalu";
+    if (upd) {
+      upd.textContent = "Diperbarui " + timeAgo(Date.now() - lastUpdateAt) + " · sumber: " + sourceLabel();
+    }
+    const ds = $("#data-source-label");
+    if (ds) ds.textContent = SOURCE_DISPLAY[sourceLabel()] || sourceLabel();
   }
 
   let refreshTimer = null;
@@ -677,17 +1093,41 @@
     lines.push("Kinerja (%)," + d.performance.toFixed(1));
     lines.push("Kualitas (%)," + d.quality.toFixed(1));
     lines.push("Target OEE (%)," + TARGETS[state.division].toFixed(1));
-    lines.push("Output (t)," + d.output.toFixed(1));
+    lines.push("Output (t)," + getOutput(state.division).toFixed(1));
     lines.push("");
     lines.push("Unit Kerja,Id,OEE (%)");
     d.units.forEach(function (u) { lines.push(u.name + "," + u.id + "," + u.value.toFixed(1)); });
     lines.push("");
-    lines.push("Penyebab Kehilangan,Menit");
-    d.downtime.forEach(function (r) { lines.push(r.name + "," + r.value); });
+    lines.push("Penyebab Kehilangan,Menit (termasuk input manual)");
+    (function () {
+      const rows = lossPeriods[state.lossPeriod].map(function (r) { return { name: r.name, value: r.value }; });
+      if (state.lossPeriod === "current") {
+        const manual = manualLossByReason();
+        Object.keys(manual).forEach(function (name) {
+          const found = rows.filter(function (r) { return r.name === name; })[0];
+          if (found) found.value += manual[name];
+          else rows.push({ name: name, value: manual[name] });
+        });
+      }
+      rows.sort(function (a, b) { return b.value - a.value; });
+      rows.forEach(function (r) { lines.push(r.name + "," + r.value); });
+    })();
     lines.push("");
-    lines.push("Waktu,Divisi,Peralatan,Kode,Durasi,Status");
-    events.forEach(function (e) {
-      lines.push([e.time, e.divisionLabel, e.equipment, e.code, e.duration, e.status].join(","));
+    lines.push("Waktu,Divisi,Peralatan,Kode,Durasi,Status,Sumber,Sebab");
+    allEvents().forEach(function (e) {
+      lines.push([e.time, e.divisionLabel, e.equipment, e.code, e.duration, e.status, e.source === "manual" ? "manual" : "sistem", e.reason || ""].join(","));
+    });
+    lines.push("");
+    lines.push("Rekap Timbangan Manual");
+    lines.push("Waktu,Divisi,Shift,Bagus (kg),Reject (kg),Scrap (kg)");
+    manualTallies.forEach(function (t) {
+      lines.push([t.time, divisionLabel(t.division), t.shift, t.good, t.reject, t.scrap].join(","));
+    });
+    lines.push("");
+    lines.push("Kamus Alat");
+    lines.push("Kode,Nama,Divisi,Tahap,Sumber Data");
+    equipment.forEach(function (eq) {
+      lines.push([eq.code, eq.name, divisionLabel(eq.division), eq.stage, SOURCE_LABELS[eq.source] || eq.source].join(","));
     });
 
     const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
@@ -769,6 +1209,26 @@
     renderMatrix();
     renderLedger();
 
+    // Input shift + kamus alat
+    renderReasonChips();
+    populateEquipmentSelect();
+    renderEquipTable();
+    renderManualLists();
+    bindInputForms();
+    updateLastUpdated();
+
+    const gotoInput = $("#btn-goto-input");
+    if (gotoInput) {
+      gotoInput.addEventListener("click", function () {
+        const sec = $("#input-shift");
+        if (sec) {
+          sec.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+          const sel = $("#dt-equipment");
+          if (sel) sel.focus({ preventScroll: true });
+        }
+      });
+    }
+
     let resizeTimer = null;
     window.addEventListener("resize", function () {
       clearTimeout(resizeTimer);
@@ -837,13 +1297,23 @@
     // Target form
     const formTarget = $("#form-target");
     if (formTarget) {
+      const targetBtnOpen = $("#btn-target");
+      if (targetBtnOpen) {
+        targetBtnOpen.addEventListener("click", function () {
+          $("#target-all").value = TARGETS.all.toFixed(1);
+          $("#target-wet").value = TARGETS.wet.toFixed(1);
+          $("#target-dry").value = TARGETS.dry.toFixed(1);
+        });
+      }
       formTarget.addEventListener("submit", function (e) {
         e.preventDefault();
         TARGETS.all = parseFloat($("#target-all").value) || TARGETS.all;
         TARGETS.wet = parseFloat($("#target-wet").value) || TARGETS.wet;
         TARGETS.dry = parseFloat($("#target-dry").value) || TARGETS.dry;
+        saveJSON(STORAGE_KEYS.targets, { all: TARGETS.all, wet: TARGETS.wet, dry: TARGETS.dry });
         if (heroTarget) heroTarget.textContent = fmtPct(TARGETS.all);
         renderMatrix();
+        applyLiveValues();
         closeModal($("#modal-target"));
         showToast("Target berhasil disimpan");
       });

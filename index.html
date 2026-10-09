@@ -40,7 +40,7 @@
 
     <div class="ctl-header__status">
       <span class="live-badge" id="live-badge"><span class="live-badge__dot" aria-hidden="true"></span>SISTEM AKTIF</span>
-      <span class="ctl-header__updated micro-label" id="last-updated">Diperbarui 0 dtk lalu</span>
+      <span class="ctl-header__updated micro-label" id="last-updated">Diperbarui 0 dtk lalu · sumber: simulasi</span>
     </div>
 
     <button class="btn-pill btn-pill--ghost" id="btn-export-top" type="button">Unduh Laporan</button>
@@ -284,6 +284,195 @@
     </div>
   </section>
 
+  <!-- ============ INPUT SHIFT ============ -->
+  <section class="input-shift panel-boot" id="input-shift" aria-labelledby="input-title">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="input-title">Input Shift</h2>
+        <p class="section-desc">Catat kejadian berhenti dan rekap timbangan. Data tersimpan di perangkat ini — berjalan tanpa internet.</p>
+      </div>
+      <div class="section-head__meta">
+        <span class="micro-label">Sumber Data</span>
+        <span class="value" id="data-source-label">Simulasi</span>
+      </div>
+    </div>
+
+    <div class="input-grid">
+      <!-- Downtime form -->
+      <div class="panel">
+        <div class="panel__head">
+          <h3 class="panel__title panel__title--sm">Catat Kejadian Berhenti</h3>
+          <span class="micro-label">±30 detik / kejadian</span>
+        </div>
+        <form class="input-form" id="form-downtime" novalidate>
+          <div class="form-row">
+            <div class="field">
+              <label class="micro-label" for="dt-equipment">Peralatan</label>
+              <select class="input" id="dt-equipment" required></select>
+            </div>
+            <div class="field">
+              <label class="micro-label" for="dt-time">Waktu Mulai</label>
+              <input class="input value" id="dt-time" type="time" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label class="micro-label" for="dt-duration">Durasi (menit)</label>
+              <input class="input value" id="dt-duration" type="number" min="1" max="600" step="1" placeholder="12" required>
+            </div>
+            <div class="field">
+              <label class="micro-label" for="dt-note">Catatan (opsional)</label>
+              <input class="input" id="dt-note" type="text" maxlength="60" placeholder="mis. ganti bearing">
+            </div>
+          </div>
+          <div class="field">
+            <span class="micro-label" id="dt-reason-label">Sebab — pilih satu</span>
+            <div class="chips" id="dt-reasons" role="radiogroup" aria-labelledby="dt-reason-label"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-pill btn-pill--live" type="submit">Simpan Kejadian</button>
+            <span class="micro-label" id="dt-hint">Pilih alat, isi durasi, lalu pilih satu sebab.</span>
+          </div>
+        </form>
+
+        <div class="entry-list-wrap">
+          <div class="entry-list-head">
+            <p class="micro-label">Riwayat Input Manual</p>
+            <span class="micro-label" id="manual-event-count">0 kejadian</span>
+          </div>
+          <ul class="entry-list" id="manual-event-list"></ul>
+        </div>
+      </div>
+
+      <!-- Tally form -->
+      <div class="panel">
+        <div class="panel__head">
+          <h3 class="panel__title panel__title--sm">Rekap Timbangan Shift</h3>
+          <span class="micro-label">±2 menit / shift</span>
+        </div>
+        <form class="input-form" id="form-tally" novalidate>
+          <div class="form-row">
+            <div class="field">
+              <label class="micro-label" for="tally-division">Divisi</label>
+              <select class="input" id="tally-division">
+                <option value="wet">Produksi Basah</option>
+                <option value="dry">Produksi Kering</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="micro-label" for="tally-shift">Shift</label>
+              <select class="input" id="tally-shift">
+                <option value="1">Shift 1</option>
+                <option value="2" selected>Shift 2</option>
+                <option value="3">Shift 3</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row form-row--3">
+            <div class="field">
+              <label class="micro-label" for="tally-good">Bagus (kg)</label>
+              <input class="input value" id="tally-good" type="number" min="0" step="1" placeholder="2450" required>
+            </div>
+            <div class="field">
+              <label class="micro-label" for="tally-reject">Reject (kg)</label>
+              <input class="input value" id="tally-reject" type="number" min="0" step="1" placeholder="38" required>
+            </div>
+            <div class="field">
+              <label class="micro-label" for="tally-scrap">Scrap (kg)</label>
+              <input class="input value" id="tally-scrap" type="number" min="0" step="1" placeholder="12" required>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-pill btn-pill--live" type="submit">Simpan Rekap</button>
+            <span class="micro-label" id="tally-hint">Isi angka timbangan akhir shift, lalu simpan.</span>
+          </div>
+        </form>
+
+        <div class="entry-list-wrap">
+          <div class="entry-list-head">
+            <p class="micro-label">Riwayat Rekap</p>
+            <span class="micro-label" id="manual-tally-count">0 rekap</span>
+          </div>
+          <ul class="entry-list" id="manual-tally-list"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EQUIPMENT MASTER ============ -->
+  <section class="equip panel-boot" id="equip" aria-labelledby="equip-title">
+    <div class="section-head">
+      <div>
+        <h2 class="section-title" id="equip-title">Kamus Alat</h2>
+        <p class="section-desc">Daftar peralatan per divisi beserta sumber datanya. Tambahkan mesin real di sini secara bertahap.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__head">
+        <h3 class="panel__title panel__title--sm">Daftar Peralatan</h3>
+        <span class="micro-label"><span class="value" id="equip-count">7</span> alat terdaftar</span>
+      </div>
+      <div class="ledger__table-wrap">
+        <table class="ledger__table" id="equip-table">
+          <thead>
+            <tr>
+              <th scope="col">Kode</th>
+              <th scope="col">Nama Alat</th>
+              <th scope="col">Divisi</th>
+              <th scope="col">Tahap</th>
+              <th scope="col">Sumber Data</th>
+              <th scope="col">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="equip-body"></tbody>
+        </table>
+      </div>
+
+      <form class="equip-form" id="form-equip" novalidate>
+        <div class="field">
+          <label class="micro-label" for="eq-code">Kode</label>
+          <input class="input value" id="eq-code" type="text" maxlength="10" placeholder="OVN-02" required>
+        </div>
+        <div class="field">
+          <label class="micro-label" for="eq-name">Nama Alat</label>
+          <input class="input" id="eq-name" type="text" maxlength="40" placeholder="Oven Pengering 2" required>
+        </div>
+        <div class="field">
+          <label class="micro-label" for="eq-division">Divisi</label>
+          <select class="input" id="eq-division">
+            <option value="wet">Produksi Basah</option>
+            <option value="dry">Produksi Kering</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="micro-label" for="eq-stage">Tahap</label>
+          <select class="input" id="eq-stage">
+            <option value="Produksi Basah">Produksi Basah</option>
+            <option value="Koagulasi">Koagulasi</option>
+            <option value="Pencucian">Pencucian</option>
+            <option value="Pemerasan">Pemerasan</option>
+            <option value="Pengeringan">Pengeringan</option>
+            <option value="Penggilingan">Penggilingan</option>
+            <option value="Penimbangan">Penimbangan</option>
+            <option value="Gudang">Gudang</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="micro-label" for="eq-source">Sumber Data</label>
+          <select class="input" id="eq-source">
+            <option value="manual">Manual</option>
+            <option value="semi">Semi-otomatis</option>
+            <option value="live">Realtime</option>
+          </select>
+        </div>
+        <div class="field field--btn">
+          <button class="btn-pill btn-pill--ghost" type="submit">Tambah Alat</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
   <!-- ============ EVENT LEDGER ============ -->
   <section class="ledger panel-boot" aria-labelledby="ledger-title">
     <div class="section-head">
@@ -327,6 +516,7 @@
       </div>
       <div class="action__buttons">
         <button class="btn-pill btn-pill--live" id="btn-report" type="button">Buat Laporan Shift</button>
+        <button class="btn-pill btn-pill--dark-ghost" id="btn-goto-input" type="button">Input Shift</button>
         <button class="btn-pill btn-pill--dark-ghost" id="btn-target" type="button">Kelola Target</button>
         <button class="btn-pill btn-pill--dark-ghost" id="btn-settings" type="button">Buka Pengaturan</button>
       </div>
