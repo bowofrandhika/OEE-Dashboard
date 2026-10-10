@@ -178,14 +178,28 @@
   const OUTPUT_BASE = { all: 24.6, wet: 12.1, dry: 12.5 };
 
   const EQUIPMENT_DEFAULT = [
+    { code: "MIX-04", name: "Pemeras / Mixer", division: "wet", stage: "Produksi Basah", source: "manual" },
+    { code: "CLN-03", name: "Unit Pencucian", division: "wet", stage: "Produksi Basah", source: "manual" },
     { code: "KOA-01", name: "Bak Koagulasi", division: "wet", stage: "Koagulasi", source: "manual" },
-    { code: "CLN-03", name: "Unit Pencucian", division: "wet", stage: "Pencucian", source: "manual" },
-    { code: "MIX-04", name: "Pemeras / Mixer", division: "wet", stage: "Pemerasan", source: "manual" },
     { code: "DRY-01", name: "Pengering", division: "dry", stage: "Pengeringan", source: "manual" },
-    { code: "MILL-02", name: "Penggiling", division: "dry", stage: "Penggilingan", source: "manual" },
+    { code: "MILL-02", name: "Penggiling", division: "dry", stage: "Pengeringan", source: "manual" },
     { code: "BAL-01", name: "Penimbang / Baling", division: "dry", stage: "Penimbangan", source: "manual" },
-    { code: "WH-01", name: "Gudang Kering", division: "dry", stage: "Gudang", source: "manual" }
+    { code: "WH-01", name: "Gudang Kering", division: "dry", stage: "Gudang Kering", source: "manual" }
   ];
+
+  const STAGE_NAMES = {
+    "1": "Produksi Basah",
+    "2": "Koagulasi",
+    "3": "Pengeringan",
+    "4": "Penimbangan",
+    "5": "Gudang Kering"
+  };
+  const STAGE_ALIASES = {
+    "Pencucian": "Produksi Basah",
+    "Pemerasan": "Produksi Basah",
+    "Penggilingan": "Pengeringan",
+    "Gudang": "Gudang Kering"
+  };
 
   const REASONS = [
     "Mesin berhenti tak terjadwal",
@@ -199,6 +213,10 @@
   const SOURCE_LABELS = { manual: "Manual", semi: "Semi-otomatis", live: "Realtime" };
 
   let equipment = loadJSON(STORAGE_KEYS.equipment, null) || EQUIPMENT_DEFAULT.slice();
+  // Normalisasi nama tahap lama agar cocok dengan 5 tahap alur proses
+  equipment.forEach(function (e) {
+    if (STAGE_ALIASES[e.stage]) e.stage = STAGE_ALIASES[e.stage];
+  });
   let manualEvents = loadJSON(STORAGE_KEYS.events, []);
   let manualTallies = loadJSON(STORAGE_KEYS.tallies, []);
   let seqCounter = loadJSON(STORAGE_KEYS.seq, 1);
@@ -300,12 +318,16 @@
   }
 
   /* ---------------------------------------------------------
-     4. CLOCK & SHIFT
+     4. CLOCK & SHIFT (satu shift — jam dapat diatur di Pengaturan)
      --------------------------------------------------------- */
 
-  // Shift 2 = 14:00–22:00 WIB
-  const SHIFT2_START = 14 * 3600;
-  const SHIFT2_END = 22 * 3600;
+  const DEFAULT_SHIFT = { start: "07:00", end: "15:00" };
+  let shiftHours = loadJSON("dryline.v1.shiftHours", DEFAULT_SHIFT);
+
+  function hhmmToSec(str) {
+    const parts = String(str || "00:00").split(":");
+    return (parseInt(parts[0], 10) || 0) * 3600 + (parseInt(parts[1], 10) || 0) * 60;
+  }
 
   function updateClock() {
     const wib = nowWIB();
@@ -315,23 +337,33 @@
     if (dateEl) dateEl.textContent = formatDateID(wib);
 
     const secs = wib.getHours() * 3600 + wib.getMinutes() * 60 + wib.getSeconds();
+    const startSec = hhmmToSec(shiftHours.start);
+    const endSec = Math.max(startSec + 3600, hhmmToSec(shiftHours.end));
+    const total = endSec - startSec;
 
-    // Determine active shift window (24h rotation of three 8h shifts)
-    let start, end, shiftNo;
-    if (secs >= SHIFT2_START && secs < SHIFT2_END) {
-      start = SHIFT2_START; end = SHIFT2_END; shiftNo = 2;
-    } else if (secs >= SHIFT2_END || secs < 6 * 3600) {
-      start = SHIFT2_END; end = 30 * 3600; shiftNo = 3;
+    let remaining, progress, timerLabel;
+    if (secs >= startSec && secs < endSec) {
+      // Dalam jam shift
+      remaining = endSec - secs;
+      progress = ((secs - startSec) / total) * 100;
+      timerLabel = "Berakhir";
+    } else if (secs < startSec) {
+      // Sebelum shift dimulai
+      remaining = startSec - secs;
+      progress = 0;
+      timerLabel = "Mulai Dalam";
     } else {
-      start = 6 * 3600; end = SHIFT2_START; shiftNo = 1;
+      // Setelah shift selesai (tunggu besok)
+      remaining = (86400 - secs) + startSec;
+      progress = 100;
+      timerLabel = "Mulai Besok";
     }
-    let elapsed = secs - start;
-    if (elapsed < 0) elapsed += 86400;
-    const remaining = Math.max(0, (end - start) - elapsed);
-    const progress = Math.min(100, Math.max(0, (elapsed / (end - start)) * 100));
 
     const shiftEl = $("#hero-shift");
-    if (shiftEl) shiftEl.textContent = "Shift " + shiftNo;
+    if (shiftEl) shiftEl.textContent = "Shift 1";
+
+    const labelEl = $("#hero-timer-label");
+    if (labelEl) labelEl.textContent = timerLabel;
 
     const timer = $("#hero-timer");
     const cycle = $("#cycle-time");
@@ -340,9 +372,8 @@
     if (cycle) cycle.textContent = formatted;
 
     const rangeEl = $("#shift-range");
-    if (rangeEl) {
-      rangeEl.textContent = pad2(Math.floor(start / 3600) % 24) + ":00 — " + pad2(Math.floor(end / 3600) % 24) + ":00";
-    }
+    if (rangeEl) rangeEl.textContent = shiftHours.start + " — " + shiftHours.end;
+
     const progFill = $("#shift-progress-fill");
     const progNow = $("#shift-progress-now");
     const progLabel = $("#shift-progress-label");
@@ -732,6 +763,26 @@
     if (current && equipment.some(function (e) { return e.code === current; })) sel.value = current;
   }
 
+  function renderRail() {
+    const map = {};
+    equipment.forEach(function (e) {
+      if (!map[e.stage]) map[e.stage] = [];
+      map[e.stage].push(e.code);
+    });
+    $$("#process-rail .rail__stage").forEach(function (li) {
+      const stageName = STAGE_NAMES[li.getAttribute("data-stage")];
+      const codes = map[stageName] || [];
+      const eqEl = $(".rail__eq", li);
+      if (eqEl) {
+        if (codes.length) {
+          eqEl.textContent = codes.slice(0, 2).join(" · ") + (codes.length > 2 ? " +" + (codes.length - 2) : "");
+        } else {
+          eqEl.textContent = "Belum ada alat";
+        }
+      }
+    });
+  }
+
   function renderEquipTable() {
     const body = $("#equip-body");
     if (!body) return;
@@ -756,6 +807,7 @@
 
     const count = $("#equip-count");
     if (count) count.textContent = equipment.length;
+    renderRail();
 
     $$(".js-equip-source", body).forEach(function (sel) {
       sel.addEventListener("change", function () {
@@ -938,7 +990,7 @@
           id: Date.now(),
           division: division,
           divisionLabel: divisionLabel(division),
-          shift: $("#tally-shift").value,
+          shift: 1,
           good: good,
           reject: reject,
           scrap: scrap,
@@ -1084,7 +1136,8 @@
   function exportCSV() {
     const d = divisions[state.division];
     const lines = [];
-    lines.push("DRYLINE / OEE — Laporan Dashboard");
+    lines.push("DRYLINE / OEE — PT. POTENSI BUMI SAKTI");
+    lines.push("Laporan Dashboard OEE Produksi Karet Kering");
     lines.push("Waktu Ekspor," + formatDateID(nowWIB()) + " " + formatClock(nowWIB()) + " WIB");
     lines.push("");
     lines.push("RINGKASAN," + d.name);
@@ -1322,8 +1375,25 @@
     // Settings form
     const formSettings = $("#form-settings");
     if (formSettings) {
+      const settingsBtnOpen = $("#btn-settings");
+      const settingsBtnFoot = $("#btn-settings-foot");
+      const prefillShift = function () {
+        const s = $("#set-shift-start");
+        const e = $("#set-shift-end");
+        if (s) s.value = shiftHours.start;
+        if (e) e.value = shiftHours.end;
+      };
+      if (settingsBtnOpen) settingsBtnOpen.addEventListener("click", prefillShift);
+      if (settingsBtnFoot) settingsBtnFoot.addEventListener("click", prefillShift);
       formSettings.addEventListener("submit", function (e) {
         e.preventDefault();
+        const startVal = $("#set-shift-start") ? $("#set-shift-start").value : "";
+        const endVal = $("#set-shift-end") ? $("#set-shift-end").value : "";
+        if (startVal && endVal) {
+          shiftHours = { start: startVal, end: endVal };
+          saveJSON("dryline.v1.shiftHours", shiftHours);
+          updateClock();
+        }
         state.refreshMs = parseInt($("#set-refresh").value, 10) || 15000;
         state.density = $("#set-density").value;
         state.simulate = $("#set-simulasi").checked;
@@ -1337,14 +1407,6 @@
         startRefresh();
         closeModal($("#modal-settings"));
         showToast("Pengaturan berhasil disimpan");
-      });
-    }
-
-    // Plant selector
-    const plant = $("#plant-select");
-    if (plant) {
-      plant.addEventListener("change", function () {
-        showToast("Plant diganti ke " + plant.options[plant.selectedIndex].text.replace("PLANT / ", ""));
       });
     }
 

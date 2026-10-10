@@ -1,4 +1,4 @@
-# DRYLINE / OEE — Dashboard Produksi Karet Kering
+# DRYLINE / OEE — PT. POTENSI BUMI SAKTI
 
 Dashboard web operasional untuk memantau kinerja **OEE (Overall Equipment Effectiveness)** pada fasilitas produksi karet kering, mencakup dua divisi:
 
@@ -7,9 +7,12 @@ Dashboard web operasional untuk memantau kinerja **OEE (Overall Equipment Effect
 
 ## Fitur
 
-- **Pita status kontrol** — jam WIB langsung, pilihan plant, indikator `SISTEM AKTIF`
+- **Pita status kontrol** — identitas PT. POTENSI BUMI SAKTI, jam WIB langsung, indikator `SISTEM AKTIF`, umur & sumber data
+- **Satu shift** — jam shift dapat diatur di Pengaturan (default 07:00–15:00 WIB)
 - **Metrik utama** — OEE, Ketersediaan, Kinerja, Kualitas vs target, progres shift
-- **Alur Basah → Kering** — 5 tahap proses dengan status peralatan langsung
+- **Alur Basah → Kering** — 5 tahap proses (tetap); mesin terdaftar di Kamus Alat otomatis tampil di tahapnya
+- **Input Shift manual** — catat kejadian berhenti + rekap timbangan (offline, localStorage)
+- **Kamus Alat** — daftar mesin per divisi + sumber data (Manual / Semi-otomatis / Realtime)
 - **Tren OEE** — grafik SVG interaktif (8 jam / 24 jam / 7 hari), garis Target & Rencana
 - **Sumber Kehilangan** — peringkat waktu henti dengan batang berarsir untuk periode lampau
 - **Matriks Divisi** — OEE per unit kerja & waktu henti per penyebab

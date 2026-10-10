@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DRYLINE / OEE — Dashboard OEE Produksi Karet Kering</title>
-  <meta name="description" content="Dashboard operasional OEE untuk memantau kinerja produksi basah dan produksi kering pada fasilitas karet kering.">
+  <title>DRYLINE / OEE — PT. POTENSI BUMI SAKTI</title>
+  <meta name="description" content="Dashboard operasional OEE PT. POTENSI BUMI SAKTI untuk memantau kinerja produksi basah dan produksi kering pada fasilitas karet kering.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,13 +24,9 @@
       <span class="wordmark__sub">OEE</span>
     </div>
 
-    <div class="ctl-header__plant">
-      <label class="micro-label" for="plant-select">Plant</label>
-      <select id="plant-select" class="plant-select" aria-label="Pilih lokasi pabrik">
-        <option value="bandung-01" selected>PLANT / BANDUNG 01</option>
-        <option value="palembang-02">PLANT / PALEMBANG 02</option>
-        <option value="pontianak-03">PLANT / PONTIANAK 03</option>
-      </select>
+    <div class="ctl-header__company">
+      <span class="micro-label">Perusahaan</span>
+      <span class="ctl-header__company-name">PT. POTENSI BUMI SAKTI</span>
     </div>
 
     <div class="ctl-header__clock">
@@ -73,7 +69,7 @@
         <div class="hero__status-row">
           <div>
             <p class="micro-label">Status Produksi</p>
-            <p class="value hero__shift" id="hero-shift">Shift 2</p>
+            <p class="value hero__shift" id="hero-shift">Shift 1</p>
           </div>
           <div class="hero__timer-block">
             <p class="micro-label" id="hero-timer-label">Berakhir</p>
@@ -127,7 +123,7 @@
     <div class="section-head">
       <div>
         <h2 class="section-title" id="process-title">Alur Produksi Basah → Kering</h2>
-        <p class="section-desc">Lima tahap proses dengan status peralatan secara langsung.</p>
+        <p class="section-desc">Lima tahap proses — bagian ini menampilkan <strong>tahapan alur produk</strong> (tetap), bukan tempat input mesin. Nama mesin diinput di <strong>Kamus Alat</strong>, lalu otomatis tampil pada tahapnya di sini.</p>
       </div>
       <div class="section-head__meta">
         <span class="micro-label">Waktu Siklus</span>
@@ -360,12 +356,8 @@
               </select>
             </div>
             <div class="field">
-              <label class="micro-label" for="tally-shift">Shift</label>
-              <select class="input" id="tally-shift">
-                <option value="1">Shift 1</option>
-                <option value="2" selected>Shift 2</option>
-                <option value="3">Shift 3</option>
-              </select>
+              <span class="micro-label">Shift</span>
+              <p class="input input--static value">Shift 1</p>
             </div>
           </div>
           <div class="form-row form-row--3">
@@ -450,12 +442,9 @@
           <select class="input" id="eq-stage">
             <option value="Produksi Basah">Produksi Basah</option>
             <option value="Koagulasi">Koagulasi</option>
-            <option value="Pencucian">Pencucian</option>
-            <option value="Pemerasan">Pemerasan</option>
             <option value="Pengeringan">Pengeringan</option>
-            <option value="Penggilingan">Penggilingan</option>
             <option value="Penimbangan">Penimbangan</option>
-            <option value="Gudang">Gudang</option>
+            <option value="Gudang Kering">Gudang Kering</option>
           </select>
         </div>
         <div class="field">
@@ -533,7 +522,7 @@
         <span class="wordmark__slash">/</span>
         <span class="wordmark__sub">OEE</span>
       </div>
-      <p class="site-footer__tag">Sistem pemantauan produksi karet kering</p>
+      <p class="site-footer__tag">PT. POTENSI BUMI SAKTI · Sistem pemantauan produksi karet kering</p>
     </div>
     <div class="site-footer__mid">
       <div class="footer-stat"><span class="micro-label">Versi</span><span class="value">1.0.0</span></div>
@@ -589,8 +578,18 @@
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
     </div>
-    <p class="modal__desc">Sesuaikan pembaruan data dan kepadatan tampilan.</p>
+    <p class="modal__desc">Sesuaikan jam shift, pembaruan data, dan kepadatan tampilan.</p>
     <form class="modal__form" id="form-settings">
+      <div class="form-row">
+        <div class="field">
+          <label class="micro-label" for="set-shift-start">Mulai Shift</label>
+          <input class="input value" id="set-shift-start" type="time" value="07:00">
+        </div>
+        <div class="field">
+          <label class="micro-label" for="set-shift-end">Akhir Shift</label>
+          <input class="input value" id="set-shift-end" type="time" value="15:00">
+        </div>
+      </div>
       <div class="field">
         <label class="micro-label" for="set-refresh">Interval Pembaruan Data</label>
         <select class="input value" id="set-refresh">

@@ -132,22 +132,15 @@ svg { display: block; }
   padding: 0 var(--margin-x);
   display: flex; align-items: center; gap: 24px;
 }
-.ctl-header__plant { display: flex; flex-direction: column; gap: 3px; }
-.plant-select {
-  appearance: none;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--rule);
+.ctl-header__company { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ctl-header__company-name {
   font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 500;
-  padding: 2px 22px 2px 0;
-  min-width: 180px;
-  background-image: linear-gradient(45deg, transparent 50%, var(--ink-muted) 50%), linear-gradient(135deg, var(--ink-muted) 50%, transparent 50%);
-  background-position: calc(100% - 10px) 55%, calc(100% - 5px) 55%;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 2px;
 }
 .ctl-header__clock {
   margin-left: auto;
@@ -943,7 +936,6 @@ body.no-motion .panel-boot {
   .ov-cell { border-bottom: none; border-right: 1px solid var(--rule); }
   .ov-cell:last-child { border-right: none; }
   .rail { grid-template-columns: repeat(5, minmax(160px, 1fr)); overflow-x: auto; }
-  .ctl-header__plant { display: none; }
 }
 
 @media (max-width: 720px) {
@@ -955,6 +947,7 @@ body.no-motion .panel-boot {
   .submetric__value { font-size: 18px; }
   .ctl-header__inner { gap: 12px; }
   .ctl-header__date { display: none; }
+  .ctl-header__company { display: none; }
   .ctl-header__time { font-size: 20px; }
   .ctl-header .btn-pill--ghost { display: none; }
   #btn-menu-mobile { display: inline-flex; }
@@ -1053,6 +1046,14 @@ select.input { appearance: none;
   padding-right: 32px;
 }
 .input.is-invalid { border-color: var(--danger); box-shadow: inset 0 -2px 0 var(--danger); }
+.input--static {
+  display: flex; align-items: center;
+  height: 40px; padding: 0 12px;
+  border: 1px dashed var(--rule);
+  background: var(--paper-2);
+  color: var(--ink-muted);
+  font-size: 14px;
+}
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .chip {
